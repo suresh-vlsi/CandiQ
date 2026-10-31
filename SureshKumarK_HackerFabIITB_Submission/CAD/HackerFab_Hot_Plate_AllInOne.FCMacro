@@ -1,0 +1,260 @@
+# HackerFab hot-plate concept assembly for FreeCAD 1.1+
+# Units: mm. This is a preliminary explanatory CAD model, NOT a manufacturing release.
+import FreeCAD as App
+import Part
+import math
+from FreeCAD import Vector
+
+try:
+    if App.ActiveDocument:
+        App.closeDocument(App.ActiveDocument.Name)
+except Exception:
+    pass
+
+doc = App.newDocument("HackerFab_Hot_Plate_Concept")
+
+# Colors are only for visual differentiation.
+ALUMINIUM = (0.78, 0.80, 0.83)
+HEATER = (0.88, 0.34, 0.08)
+SENSOR = (0.12, 0.45, 0.78)
+INSULATION = (0.83, 0.78, 0.62)
+STEEL = (0.45, 0.48, 0.51)
+DARK = (0.20, 0.22, 0.24)
+WAFER = (0.30, 0.72, 0.88)
+
+
+def feature(name, label, shape, color, transparency=0):
+    obj = doc.addObject("PartDesign::Feature", name)
+    obj.Label = label
+    obj.Shape = shape
+    if hasattr(obj, "ViewObject"):
+        obj.ViewObject.ShapeColor = color
+        obj.ViewObject.LineColor = (0.12, 0.12, 0.12)
+        obj.ViewObject.DisplayMode = "Flat Lines"
+        obj.ViewObject.Transparency = transparency
+    return obj
+
+# Main plate: top surface at z=20, bottom surface at z=0.
+plate_blank = Part.makeCylinder(80.0, 20.0, Vector(0, 0, 0), Vector(0, 0, 1))
+
+# Four radial cartridge-heater bores, entered from the rim. This is physically
+# consistent with a 20 mm plate thickness and 60 mm long heater cartridges.
+# Hole axis lies at mid-thickness z=10; bores run radially inward 60 mm.
+heater_bore_shapes = []
+heater_directions = [Vector(-1,0,0), Vector(1,0,0), Vector(0,-1,0), Vector(0,1,0)]
+heater_starts = [Vector(80,0,10), Vector(-80,0,10), Vector(0,80,10), Vector(0,-80,10)]
+for start, direction in zip(heater_starts, heater_directions):
+    heater_bore_shapes.append(Part.makeCylinder(3.25, 60.0, start, direction))
+for bore in heater_bore_shapes:
+    plate_blank = plate_blank.cut(bore)
+
+# Two underside RTD pockets, diameter 3.2 mm, 14 mm deep. Kept away from radial bores.
+for x, y in [(-28,-28), (28,28)]:
+    pocket = Part.makeCylinder(1.6, 14.0, Vector(x,y,0), Vector(0,0,1))
+    plate_blank = plate_blank.cut(pocket)
+plate_obj = feature("HeatingPlate", "01 - Aluminium heating plate (Ø160 × 20)", plate_blank, ALUMINIUM)
+plate_obj.addProperty("App::PropertyLength", "Diameter", "Design").Diameter = 160
+plate_obj.addProperty("App::PropertyLength", "Thickness", "Design").Thickness = 20
+plate_obj.addProperty("App::PropertyString", "Material", "Design").Material = "Aluminium 6061 - provisional; verify high-temperature strength/flatness"
+
+# Four cartridge heaters, modeled as solid cylinders inserted radially. Their
+# nominal length is 60 mm and diameter 6.0 mm for a little visual clearance.
+for i, (start, direction) in enumerate(zip(heater_starts, heater_directions), start=1):
+    # Begin 1 mm outside the rim and run inward 60 mm.
+    heater_start = start + direction * (-1.0)
+    heater_shape = Part.makeCylinder(3.0, 60.0, heater_start, direction)
+    h = feature("CartridgeHeater%02d" % i, "%02d - Cartridge heater %d (concept Ø6 × 60)" % (i+1, i), heater_shape, HEATER)
+    h.addProperty("App::PropertyString", "Rating", "Design").Rating = "250 W nominal; confirm supplier and voltage"
+
+# RTD probes are represented as vertical cylinders entering from the underside.
+for i, (x, y) in enumerate([(-28,-28), (28,28)], start=1):
+    sensor_shape = Part.makeCylinder(1.35, 14.0, Vector(x,y,0), Vector(0,0,1))
+    s = feature("Pt100Sensor%02d" % i, "%02d - Pt100 sensor %d (concept Ø2.7 × 14)" % (i+5, i), sensor_shape, SENSOR)
+    s.addProperty("App::PropertyString", "Type", "Design").Type = "4-wire Pt100; pocket fit and response require datasheet check"
+
+# Wafer reference: thin translucent disk sitting on top. It is a visual reference,
+# not a bonded component.
+wafer_shape = Part.makeCylinder(50.8, 0.5, Vector(0,0,20.2), Vector(0,0,1))
+waf = feature("WaferReference", "08 - 4-inch wafer reference (Ø101.6; transparent)", wafer_shape, WAFER, 72)
+waf.addProperty("App::PropertyLength", "Diameter", "Design").Diameter = 101.6
+
+# Insulation disk directly below the plate (schematic dimensions).
+ins_shape = Part.makeCylinder(90.0, 25.0, Vector(0,0,-25.0), Vector(0,0,1))
+ins = feature("Insulation", "09 - Ceramic-fibre insulation disk (Ø180 × 25; concept)", ins_shape, INSULATION)
+
+# Four support spacers under insulation.
+for i, (x,y) in enumerate([(-65,-65),(-65,65),(65,-65),(65,65)], start=1):
+    spacer_shape = Part.makeCylinder(5.0, 18.0, Vector(x,y,-43.0), Vector(0,0,1))
+    feature("SupportSpacer%02d" % i, "Support spacer %d (concept Ø10 × 18)" % i, spacer_shape, STEEL)
+
+# Simple square enclosure/base. It is schematic and intentionally separate from the hot plate.
+base_outer = Part.makeBox(190.0, 190.0, 18.0, Vector(-95,-95,-65))
+base_inner = Part.makeBox(178.0, 178.0, 18.2, Vector(-89,-89,-65.1))
+base_shape = base_outer.cut(base_inner)
+feature("BaseEnclosure", "14 - Stainless enclosure base (schematic 190 × 190 × 18)", base_shape, STEEL)
+
+# Four feet below base.
+for i, (x,y) in enumerate([(-72,-72),(-72,72),(72,-72),(72,72)], start=1):
+    foot_shape = Part.makeCylinder(8.0, 10.0, Vector(x,y,-75), Vector(0,0,1))
+    feature("Foot%02d" % i, "Enclosure foot %d (schematic Ø16 × 10)" % i, foot_shape, DARK)
+
+# A front-panel representation on the front side (negative Y): controller, indicator, E-stop.
+panel = Part.makeBox(70, 3, 32, Vector(-35,-98,-62))
+feature("FrontPanel", "19 - Front control panel (schematic)", panel, DARK)
+controller = Part.makeBox(28, 2, 18, Vector(-25,-100,-56))
+feature("ControllerDisplay", "20 - PID display (schematic)", controller, (0.12,0.16,0.18))
+for i, x in enumerate([15, 28], start=1):
+    knob = Part.makeCylinder(4.0, 3.0, Vector(x,-101,-48), Vector(0,1,0))
+    feature("PanelControl%02d" % i, "Panel control %d (schematic)" % i, knob, (0.10,0.65,0.30) if i == 1 else (0.78,0.08,0.08))
+
+# Organize objects into groups for a clean model tree.
+# Feature objects remain editable as individual Part::Feature solids.
+try:
+    assembly = doc.addObject("App::DocumentObjectGroup", "Assembly")
+    assembly.Label = "Hot plate assembly - concept components"
+    for obj in list(doc.Objects):
+        if obj != assembly and obj.Name != "Origin":
+            assembly.addObject(obj)
+except Exception:
+    pass
+
+doc.recompute()
+Gui.activeDocument().activeView().viewAxonometric()
+Gui.activeDocument().activeView().fitAll()
+
+# Set a neutral background/display style if available.
+try:
+    Gui.activeDocument().activeView().setAnimationEnabled(False)
+except Exception:
+    pass
+
+App.Console.PrintMessage("\nHot plate concept model created. Save as Hot_Plate_Assembly.FCStd.\n")
+App.Console.PrintMessage("IMPORTANT: concept geometry only; heater bore arrangement, sensor pockets, enclosure and material must be validated before manufacture.\n")
+
+
+# -----------------------------------------------------------------------------
+# AUTOMATIC DIMENSIONED DRAWING SHEET (FreeCAD 1.1.x)
+# -----------------------------------------------------------------------------
+# A4 landscape TechDraw page, plate top/front views, nominal diameter dimension,
+# and a requirements / safety / BOM / assembly note block. This is a CONCEPT
+# design; requirements are targets and are NOT claimed as achieved/tested.
+
+import os
+
+try:
+    # Find a bundled A4 landscape TechDraw template from this FreeCAD install.
+    template_candidates = [
+        App.getResourceDir() + "Mod/TechDraw/Templates/A4_LandscapeTD.svg",
+        App.getResourceDir() + "Mod/TechDraw/Templates/A4_Landscape.svg",
+        App.getResourceDir() + "Mod/TechDraw/Templates/A4_Landscape_blank.svg",
+    ]
+    template_path = next((p for p in template_candidates if os.path.exists(p)), None)
+
+    page = doc.addObject("TechDraw::DrawPage", "DimensionedDrawingPage")
+    page.Label = "Hot Plate - Dimensioned Concept Drawing"
+    if template_path:
+        template = doc.addObject("TechDraw::DrawSVGTemplate", "DimensionedDrawingTemplate")
+        template.Label = "A4 Landscape Drawing Sheet"
+        template.Template = template_path
+        page.Template = template
+
+    # Top view: plate only, so heater bores and sensor pockets can be inspected.
+    top = doc.addObject("TechDraw::DrawViewPart", "PlateTopView")
+    top.Label = "Heating plate - top view"
+    top.Source = [plate_obj]
+    top.Direction = Vector(0, 0, 1)
+    top.ScaleType = "Custom"
+    top.Scale = 0.62
+    top.X = 76
+    top.Y = 155
+    page.addView(top)
+
+    # Front view: plate only, communicates the 20 mm nominal thickness.
+    front = doc.addObject("TechDraw::DrawViewPart", "PlateFrontView")
+    front.Label = "Heating plate - front view"
+    front.Source = [plate_obj]
+    front.Direction = Vector(0, -1, 0)
+    front.ScaleType = "Custom"
+    front.Scale = 0.62
+    front.X = 76
+    front.Y = 88
+    page.addView(front)
+
+    # Isometric view of the concept assembly for context.
+    assembly_view = doc.addObject("TechDraw::DrawViewPart", "AssemblyIsometricView")
+    assembly_view.Label = "Concept assembly - isometric"
+    assembly_view.Source = [o for o in doc.Objects if hasattr(o, "Shape") and not o.Shape.isNull() and o.Name not in ("HeatingPlate",)]
+    assembly_view.Direction = Vector(1, -1, 1)
+    assembly_view.ScaleType = "Custom"
+    assembly_view.Scale = 0.28
+    assembly_view.X = 190
+    assembly_view.Y = 137
+    page.addView(assembly_view)
+
+    doc.recompute()
+
+    # Find the top circular edge of the plate for a real TechDraw diameter dim.
+    outer_edge_name = None
+    outer_edge_z = -1e99
+    for i, edge in enumerate(plate_obj.Shape.Edges, start=1):
+        try:
+            curve = edge.Curve
+            if hasattr(curve, "Radius") and abs(float(curve.Radius) - 80.0) < 0.05:
+                z = edge.CenterOfMass.z
+                if z > outer_edge_z:
+                    outer_edge_z = z
+                    outer_edge_name = "Edge%d" % i
+        except Exception:
+            pass
+
+    if outer_edge_name:
+        try:
+            diameter_dim = doc.addObject("TechDraw::DrawViewDimension", "PlateDiameterDimension")
+            diameter_dim.Label = "Plate outside diameter - Ø160 mm"
+            diameter_dim.Type = "Diameter"
+            diameter_dim.MeasureType = "True"
+            diameter_dim.References3D = [(plate_obj, [outer_edge_name])]
+            diameter_dim.X = 105
+            diameter_dim.Y = 125
+            page.addView(diameter_dim)
+        except Exception as e:
+            App.Console.PrintWarning("Automatic diameter dimension could not be attached: %s\n" % str(e))
+
+    # Notes block includes dimensional callouts and all key task requirements.
+    # Text uses explicit target language so no unverified performance is implied.
+    notes = doc.addObject("TechDraw::DrawViewAnnotation", "DesignRequirementsNotes")
+    notes.Label = "Dimensions, performance targets, BOM and assembly notes"
+    notes.Text = [
+        "HACKERFAB IITB - SEMICONDUCTOR HOT PLATE CONCEPT",
+        "UNITS: mm unless stated | PRELIMINARY - NOT FOR MANUFACTURE",
+        "GEOMETRY: plate Ø160 x 20 thick; active wafer reference Ø101.6 (4 inch)",
+        "HEATING: 4 x 250 W nominal cartridge heaters, concept Ø6 x 60 radial",
+        "SENSING: 2 x 4-wire Pt100 RTDs; positions/pockets to be validated",
+        "TEMPERATURE RANGE TARGET: ambient to 400 deg C",
+        "SETPOINT ERROR TARGET: <5 deg C; run-to-run difference target: <0.5 deg C",
+        "UNIFORMITY TARGET: +/-0.5 deg C over qualified active area (max spread 1 deg C)",
+        "FLATNESS TARGET: +/-10 micrometres across top surface",
+        "CONTROL/SAFETY: PID + SSR/contactor; independent over-temperature cutoff and fuse",
+        "BOM (concept): Al plate; 4 heaters; 2 Pt100 probes; PID/controller; SSR; contactor; fuse;",
+        "independent thermal cutout; insulation; enclosure; wiring, terminals and earth hardware",
+        "ASSEMBLY: machine/inspect plate and bores; fit heaters and RTDs; add insulation/base;",
+        "wire earth, fuse, contactor, SSR and independent cutoff; verify sensor polarity and interlocks",
+        "QUALIFICATION REQUIRED: map temperature at multiple points, repeat cycles, verify flatness",
+        "and stability at 400 deg C. Do not claim targets met until measured and documented.",
+        "MATERIAL CAUTION: 6061 aluminium temper/strength and distortion at 400 deg C require review.",
+        "All heater bores, clearances, electrical ratings, insulation and guarding require engineering sign-off."
+    ]
+    notes.X = 190
+    notes.Y = 55
+    notes.TextSize = 2.15
+    page.addView(notes)
+
+    doc.recompute()
+    Gui.activeDocument().activeView().viewAxonometric()
+    Gui.activeDocument().activeView().fitAll()
+    App.Console.PrintMessage("\nCreated concept assembly AND dimensioned TechDraw sheet.\n")
+    App.Console.PrintMessage("Inspect the TechDraw page and confirm all views/annotations are visible before submission.\n")
+    App.Console.PrintMessage("Performance values are design targets, not experimentally verified results.\n")
+except Exception as drawing_error:
+    App.Console.PrintError("Assembly was created, but drawing-sheet creation encountered an error: %s\n" % str(drawing_error))
+    App.Console.PrintMessage("The 3D concept assembly remains in the document. Check the Report view for the error.\n")

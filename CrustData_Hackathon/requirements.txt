@@ -1,0 +1,5 @@
+requests>=2.31.0
+pydantic>=2.7.0
+google-genai>=1.0.0
+openai>=1.30.0
+pytest>=8.0.0

@@ -1,0 +1,46 @@
+# Self-contained concept drawing macro for FreeCAD 1.1.x.
+# Creates a fresh TechDraw page with a vector SVG sheet. Keeps all 3D objects intact.
+import FreeCAD as App
+import os, traceback
+
+if App.ActiveDocument is None:
+    raise RuntimeError('Open your hot-plate 3D document first, then run this macro.')
+doc = App.ActiveDocument
+
+svg = '''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210">
+<rect x="5" y="5" width="287" height="200" fill="white" stroke="black" stroke-width="0.35"/><rect x="9" y="9" width="279" height="192" fill="none" stroke="black" stroke-width="0.18"/>
+<g fill="black" font-family="DejaVu Sans,Arial,sans-serif">
+<text x="15" y="17" font-size="3.6" font-weight="bold">HACKERFAB IITB | SEMICONDUCTOR HOT PLATE</text><text x="15" y="22" font-size="2.5">PRELIMINARY CONCEPT DRAWING - NOT FOR MANUFACTURE</text>
+<text x="45" y="32" font-size="3" font-weight="bold" text-anchor="middle">TOP VIEW</text><circle cx="45" cy="66" r="25" fill="none" stroke="black" stroke-width="0.45"/><circle cx="45" cy="66" r="15.875" fill="none" stroke="black" stroke-width="0.35" stroke-dasharray="1.5,1"/>
+<circle cx="45" cy="43" r="1.2" fill="none" stroke="black" stroke-width="0.35"/><circle cx="68" cy="66" r="1.2" fill="none" stroke="black" stroke-width="0.35"/><circle cx="45" cy="89" r="1.2" fill="none" stroke="black" stroke-width="0.35"/><circle cx="22" cy="66" r="1.2" fill="none" stroke="black" stroke-width="0.35"/>
+<line x1="20" y1="98" x2="70" y2="98" stroke="black" stroke-width="0.25"/><line x1="20" y1="94" x2="20" y2="100" stroke="black" stroke-width="0.25"/><line x1="70" y1="94" x2="70" y2="100" stroke="black" stroke-width="0.25"/><path d="M20 98 l3 -1.2 v2.4 z M70 98 l-3 -1.2 v2.4 z" fill="black"/><text x="45" y="96" font-size="2.7" text-anchor="middle">Ø160 mm</text>
+<text x="45" y="105" font-size="2.3" text-anchor="middle">Dashed circle: wafer reference Ø101.6</text><text x="45" y="110" font-size="2.3" text-anchor="middle">Four heater positions are schematic</text>
+<text x="45" y="123" font-size="3" font-weight="bold" text-anchor="middle">FRONT / EDGE VIEW</text><rect x="20" y="133" width="50" height="6.25" fill="none" stroke="black" stroke-width="0.45"/><line x1="20" y1="143" x2="70" y2="143" stroke="black" stroke-width="0.25"/><line x1="20" y1="141" x2="20" y2="145" stroke="black" stroke-width="0.25"/><line x1="70" y1="141" x2="70" y2="145" stroke="black" stroke-width="0.25"/><text x="45" y="148" font-size="2.7" text-anchor="middle">160 mm</text><line x1="75" y1="133" x2="75" y2="139.25" stroke="black" stroke-width="0.25"/><line x1="73" y1="133" x2="77" y2="133" stroke="black" stroke-width="0.25"/><line x1="73" y1="139.25" x2="77" y2="139.25" stroke="black" stroke-width="0.25"/><text x="79" y="137" font-size="2.5">20 mm</text><text x="45" y="155" font-size="2.2" text-anchor="middle">Schematic side profile; verify detailed design</text>
+<text x="105" y="32" font-size="3.1" font-weight="bold">DESIGN BASIS AND REQUIREMENTS</text><text x="105" y="39" font-size="2.55">Plate: nominal Ø160 x 20 mm; wafer reference Ø101.6 mm (4 inch).</text><text x="105" y="45" font-size="2.55">Heating: 4 x nominal 250 W cartridge heaters, concept Ø6 x 60 mm.</text><text x="105" y="51" font-size="2.55">Sensing: 2 x four-wire Pt100 RTDs; locations need validation.</text><text x="105" y="57" font-size="2.55">Operating target: ambient to 400 °C.</text><text x="105" y="63" font-size="2.55">Setpoint error target: less than 5 °C.</text><text x="105" y="69" font-size="2.55">Run-to-run difference target: less than 0.5 °C.</text><text x="105" y="75" font-size="2.55">Uniformity target: ±0.5 °C in qualified area; max spread 1 °C.</text><text x="105" y="81" font-size="2.55">Top flatness target: ±10 µm; verify by suitable metrology.</text>
+<text x="105" y="91" font-size="3.1" font-weight="bold">BILL OF MATERIALS - CONCEPTUAL</text><text x="105" y="98" font-size="2.55">1 x aluminium plate; alloy/temper must be qualified at 400 °C.</text><text x="105" y="104" font-size="2.55">4 x cartridge heaters; 2 x four-wire Pt100 sensors.</text><text x="105" y="110" font-size="2.55">PID controller; rated SSR; contactor; fuse or circuit breaker.</text><text x="105" y="116" font-size="2.55">Independent over-temperature cutoff; rated wires and terminals.</text><text x="105" y="122" font-size="2.55">Thermal insulation; grounded enclosure; supports and fasteners.</text>
+<text x="105" y="132" font-size="3.1" font-weight="bold">ASSEMBLY AND SAFETY NOTES</text><text x="105" y="139" font-size="2.55">1. Review alloy, heater fit, bore layout and high-temperature strength.</text><text x="105" y="145" font-size="2.55">2. Fit heaters and RTDs; provide strain relief and thermal insulation.</text><text x="105" y="151" font-size="2.55">3. Bond protective earth; use rated switching and independent cutoff.</text><text x="105" y="157" font-size="2.55">4. Guard live terminals; verify wiring, insulation and grounding.</text><text x="105" y="163" font-size="2.55">5. Map temperatures at multiple points; repeat cycles; measure flatness.</text>
+<text x="105" y="173" font-size="2.8" font-weight="bold">QUALIFICATION LIMITATIONS</text><text x="105" y="180" font-size="2.5">Targets are not demonstrated until tested. Aluminium 6061 at 400 °C</text><text x="105" y="186" font-size="2.5">requires review for temper loss, warpage and flatness retention.</text><text x="105" y="192" font-size="2.5">Concept-level aid only; not a released manufacturing drawing.</text>
+<line x1="9" y1="195" x2="288" y2="195" stroke="black" stroke-width="0.25"/><text x="15" y="200" font-size="2.3">UNITS: mm | SCALE: schematic | REV: A | DATE: 2026-10-13</text><text x="280" y="200" font-size="2.3" text-anchor="end">HACKERFAB IITB TASK</text></g></svg>'''
+
+svg_path = os.path.join(os.path.expanduser('~'), 'Hot_Plate_Dimensioned_Concept.svg')
+with open(svg_path, 'w', encoding='utf-8') as f:
+    f.write(svg)
+
+try:
+    # New uniquely named page/template; existing 3D geometry and old page are untouched.
+    template = doc.addObject('TechDraw::DrawSVGTemplate', 'FinalHotPlateTemplate')
+    template.Label = 'A4 Landscape - Dimensioned Hot Plate Concept'
+    template.Template = svg_path
+    page = doc.addObject('TechDraw::DrawPage', 'FinalHotPlateDrawingPage')
+    page.Label = 'FINAL - Hot Plate Dimensioned Concept Drawing'
+    page.Template = template
+    doc.recompute()
+    Gui.activateWorkbench('TechDrawWorkbench')
+    Gui.activeDocument().setEdit(page.Name)
+    doc.recompute()
+    App.Console.PrintMessage('\nSUCCESS: Created a new self-contained concept drawing page. If not visible, double-click FINAL - Hot Plate Dimensioned Concept Drawing in the tree.\nSVG file: ' + svg_path + '\n')
+    App.Console.PrintMessage('3D components were not deleted or modified. Save the document.\n')
+except Exception as e:
+    App.Console.PrintError('DRAWING CREATION FAILED: %s\n%s\n' % (e, traceback.format_exc()))
+    raise
