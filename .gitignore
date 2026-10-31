@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime/cache/output
+.cache/
+.llm_cache/
+*.log
+report.md
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
