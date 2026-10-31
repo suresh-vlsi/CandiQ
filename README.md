@@ -2,6 +2,14 @@
 
 A human-in-the-loop recruiting research assistant. It parses a hiring request, searches candidate profiles, enriches selected profiles, generates evidence-linked claims, verifies citations, and produces a Markdown shortlist. It does **not** contact candidates or make employment decisions.
 
+## 🎥 Project Demo
+
+Watch our project demonstration to understand the implementation and workflow of **CandiQ – Agentic AI Recruitment Agent**.
+
+▶️ **[Watch the Project Demo on Loom](https://www.loom.com/share/9a460cf12f0c4484b9deeab9a9d10283)**
+
+The demonstration walks through the project and showcases the agentic AI recruitment workflow.
+
 ## Architecture
 
 1. Parse the request into atomic must-have / nice-to-have criteria.
