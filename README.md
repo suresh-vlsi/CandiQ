@@ -12,11 +12,10 @@ The demonstration walks through the project and showcases the agentic AI recruit
 
 ## 📄 Technical Documentation
 
-Explore the technical architecture, implementation details, requirements, engineering approach, limitations, and future scope of CandiQ.
+The complete technical documentation for CandiQ is available below.
 
-📥 **[View / Download Technical Documentation (PDF)](Evidence_Based_AI_Recruitment_Agent_Technical_Documentation.pdf)**
-
-📝 **[View Technical Documentation (DOCX)](Evidence_Based_AI_Recruitment_Agent_Technical_Documentation.docx)**
+- 📥 [Download Technical Documentation (PDF)](https://raw.githubusercontent.com/suresh-vlsi/CandiQ/main/Evidence_Based_AI_Recruitment_Agent_Technical_Documentation.pdf)
+- 📝 [Download Technical Documentation (DOCX)](https://github.com/suresh-vlsi/CandiQ/raw/refs/heads/main/Evidence_Based_AI_Recruitment_Agent_Technical_Documentation.docx)
 
 ## Architecture
 
